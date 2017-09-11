@@ -1,0 +1,103 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="maximum-scale=1.0, minimum-scale=1.0, user-scalable=0, initial-scale=1.0, width=device-width"/>
+    <meta name="format-detection" content="telephone=no, email=no, date=no, address=no">
+    <title>Hello APP</title>
+    <link rel="stylesheet" type="text/css" href="../css/api.css" />
+    <link rel="stylesheet" type="text/css" href="../css/aui.css" />
+    <style type='text/css'>
+        .aui-content {padding:10px;}
+    </style>
+</head>
+<body>
+    <div class="aui-content">
+        <ul id='list' class="aui-user-view">
+            <template v-for="item in items">
+            <li class="aui-user-view-cell aui-img" onclick="fnLoadMusic('{{ item.link }}');">
+                <img class="aui-img-object aui-pull-left" src="http://192.168.69.52/Uploads/images/{{ item.thumb }}">
+                <div class="aui-img-body aui-arrow-right">
+                    <span>{{ item.title }}</span>
+                    <p class="aui-ellipsis-1">{{ item.description }}</p>
+                </div>
+            </li>
+            </template>
+        </ul>
+    </div>
+</body>
+<script type="text/javascript" src="../script/api.js"></script>
+<script type="text/javascript" src="../script/vue.js"></script>
+<script type="text/javascript">
+    function fnLoadMusic(link) {
+        //打开新win窗体
+        api.openWin({
+            name: 'music',
+            url: './win_music.html',
+            pageParam: {
+                link: link
+            }
+        });
+    }
+    //定义全局变量：起始坐标，每次加载数量
+    var skip = 0,LIMIT = 1;
+    //定义全局变量：用于接收Vue实例化后的结果
+    var vm;
+    function fnLoadList(isPull) {
+        //使用api-ajax调用远程数据
+        api.ajax({
+            url: 'http://192.168.69.52/App/News/index',
+            method: 'get',
+            data: {
+                values: {
+                    skip:skip,
+                    limit:LIMIT
+                }
+            }
+        },function(ret, err){
+            if(ret) {
+                if(ret.info.length < LIMIT) {
+                    skip += ret.info.length;
+                } else {
+                    skip += LIMIT;
+                }
+                
+                //判断是否为下拉刷新，如果是，则追加数据
+                if(isPull) {
+                    for(var i=0;i<ret.info.length;i++) {
+                        vm.items.unshift(ret.info[i]);
+                    }
+                    //强制停止后续代码的继续执行
+                    return;
+                }
+
+                vm = new Vue({
+                    el:'#list',
+                    data:{
+                        items:ret.info
+                    }
+                });
+            }
+        });
+    }
+    apiready = function(){
+        //调用fnLoadList方法
+        fnLoadList();
+        //定义下拉刷新功能
+        api.setRefreshHeaderInfo({
+            visible: true,
+            loadingImg: 'widget://image/refresh.png',
+            bgColor: '#ccc',
+            textColor: '#fff',
+            textDown: '下拉刷新...',
+            textUp: '松开刷新...',
+            showTime: true
+        }, function(ret, err){
+            //调用fnLoadList方法
+            fnLoadList(true);
+            //中止下拉刷新，恢复到默认状态
+            api.refreshHeaderLoadDone();
+        });
+    };
+</script>
+</html>
